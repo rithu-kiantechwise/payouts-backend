@@ -22,6 +22,9 @@ const organizationSchema = new mongoose.Schema({
             ref: 'employees',
         },
     ],
+    allowedEmployees: {
+        type: Number,
+    },
     token: {
         type: String,
         default: null,

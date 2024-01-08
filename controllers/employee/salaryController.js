@@ -48,7 +48,6 @@ const getUniqueMonthsForEmployee = async (employeeId) => {
 export const getMonthlySalaryDetails = async (req, res, next) => {
     const employeeID = req.user.id;
     const { page } = req.query;
-    console.log(page);
 
     try {
         const employee = await employeeModel.findById(employeeID);

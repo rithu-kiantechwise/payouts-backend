@@ -69,9 +69,9 @@ export const editOrgProfile = async (req, res, next) => {
     try {
         const existingOrganizationDetails = await organizationModel.findById(organizationId);
 
-        if (existingOrganizationDetails.imageUrl) {
-            await deleteImage({ imageUrl: existingOrganizationDetails.imageUrl });
-        }
+        // if (existingOrganizationDetails.imageUrl) {
+        //     await deleteImage({ imageUrl: existingOrganizationDetails.imageUrl });
+        // }
 
         let imageUrl = null;
         if (imageName) {

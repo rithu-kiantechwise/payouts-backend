@@ -1,7 +1,6 @@
 import { employeeModel } from "../../models/employeeModel.js";
 import { attendanceModel } from '../../models/attendanceModel.js';
 import { sendMail } from '../../middleware/nodemailer.js';
-import { leaveModel } from "../../models/leaveModel.js";
 
 export const handleCheckin = async (req, res, next) => {
     const userId = req.user.id;
@@ -69,70 +68,49 @@ export const handleCheckout = async (req, res, next) => {
         next(error);
     }
 };
-
-const calculateTotalLeaveDays = (leaves) => {
-    return leaves.reduce((totalDays, leave) => {
-        const timeDiff = leave.endDate.getTime() - leave.startDate.getTime();
-        const days = Math.max(Math.ceil(timeDiff / (1000 * 60 * 60 * 24)), 1);
-
-        return totalDays + days;
-    }, 0);
-};
-const getUniqueMonthsForEmployee = async (employeeId) => {
-    const uniqueMonths = await attendanceModel.aggregate([
-        { $match: { userId: employeeId } },
-        {
-            $group: {
-                _id: { $dateToString: { format: "%Y-%m", date: "$checkInTime" } },
-            },
-        },
-    ]);
-    return uniqueMonths.map((entry) => entry._id);
-};
 export const getAttendanceDetails = async (req, res, next) => {
     const employeeID = req.user.id;
     const { page } = req.query;
+    const limit = 10;
 
     try {
-        const employee = await employeeModel.findById(employeeID);
-        const uniqueMonths = await getUniqueMonthsForEmployee(employee._id);
+        const totalItems = await attendanceModel.countDocuments({ userId: employeeID });
 
-        const limit = 10;
-        const startIndex = (page - 1) * limit;
-        const endIndex = page * limit;
+        const attendanceDetails = await attendanceModel
+            .find({ userId: employeeID })
+            .sort({ createdAt: -1 })
+            .skip((page - 1) * limit)
+            .limit(limit);
 
-        const attendanceDetails = [];
-        const paginatedMonths = uniqueMonths.slice(startIndex, endIndex);
+        const formattedAttendanceDetails = attendanceDetails.map(attendanceRecord => {
+            const date = attendanceRecord.createdAt.toISOString().split('T')[0];
+            const checkInTime = attendanceRecord.checkInTime ? attendanceRecord.checkInTime : '';
+            const checkOutTime = attendanceRecord.checkOutTime ? attendanceRecord.checkOutTime : '';
 
-        for (const month of paginatedMonths) {
-            const startOfMonth = new Date(`${month}-01T00:00:00.000Z`);
-            const endOfMonth = new Date(new Date(startOfMonth).setMonth(startOfMonth.getMonth() + 1));
+            let totalWorkedHours = 'Not calculated';
+            if (attendanceRecord.checkInTime && attendanceRecord.checkOutTime) {
+                const checkIn = attendanceRecord.checkInTime.getTime();
+                const checkOut = attendanceRecord.checkOutTime.getTime();
+                const millisecondsWorked = checkOut - checkIn;
+                const hoursWorked = millisecondsWorked / (1000 * 60 * 60);
+                totalWorkedHours = hoursWorked.toFixed(2) + ' hours';
+            }
 
-            const attendance = await attendanceModel.find({
-                userId: employee._id,
-                checkInTime: { $gte: startOfMonth, $lt: endOfMonth },
-            });
-            const leaves = await leaveModel.find({
-                employeeId: employee._id,
-                startDate: { $gte: startOfMonth, $lt: endOfMonth },
-            });
+            return {
+                date,
+                checkInTime,
+                checkOutTime,
+                totalWorkedHours,
+            };
+        });
 
-            const totalLeaveDays = calculateTotalLeaveDays(leaves);
-            console.log(totalLeaveDays);
-            attendanceDetails.push({
-                month,
-                attendance,
-                leaves,
-                totalLeaveDays,
-            });
-        }
-
+        const totalPages = Math.ceil(totalItems / limit);
         return res.status(200).json({
             success: true,
             currentPage: page,
-            totalItems: uniqueMonths.length,
-            totalPages: Math.ceil(uniqueMonths.length / limit),
-            attendanceDetails,
+            totalItems,
+            totalPages,
+            attendanceDetails: formattedAttendanceDetails,
         });
     } catch (error) {
         next(error);

@@ -117,7 +117,7 @@ export const updateEmployee = async (req, res, next) => {
 export const deleteEmployee = async (req, res, next) => {
     const { employeeID } = req.params;
     try {
-        const deletedEmployee = await employeeModel.findOneAndDelete(employeeID);
+        const deletedEmployee = await employeeModel.findOneAndDelete({ _id: employeeID });
         if (!deletedEmployee) {
             return res.status(404).json({ success: false, error: "Employee not found" });
         }
@@ -141,7 +141,7 @@ export const deleteEmployee = async (req, res, next) => {
     }
 };
 
-export const getAllEmployeesLeaveDetails = async (req, res,next) => {
+export const getAllEmployeesLeaveDetails = async (req, res, next) => {
     const organizationId = req.user.id;
     const { page } = req.query;
     try {
@@ -182,6 +182,65 @@ export const manageLeaveStatus = async (req, res, next) => {
         );
 
         return res.status(200).json({ success: true, updatedLeave });
+    } catch (error) {
+        next(error);
+    }
+};
+
+const calculateTotalWorkedHours = (checkInTime, checkOutTime) => {
+    if (checkInTime && checkOutTime) {
+        const checkIn = new Date(checkInTime);
+        const checkOut = new Date(checkOutTime);
+        const timeDiff = checkOut - checkIn;
+        const hours = timeDiff / (1000 * 60 * 60);
+        return hours;
+    }
+    return 0;
+};
+
+export const getEmployeeAttendance = async (req, res, next) => {
+    const organizationId = req.user.id;
+    const { page } = req.query;
+    const limit = 10;
+
+    try {
+        const employees = await employeeModel.find({ organization: organizationId });
+
+        const employeeInfo = employees.map(employee => ({
+            userId: employee._id,
+            employeeId: employee.employeeID,
+            employeeName: `${employee.firstName} ${employee.lastName}`
+        }));
+
+        const userIds = employees.map(employee => employee._id);
+
+        const allAttendanceRecords = await attendanceModel.find({ userId: { $in: userIds } });
+
+        const attendanceWithEmployeeInfo = employeeInfo.map(employee => {
+            const userAttendanceRecords = allAttendanceRecords.filter(record => record.userId.equals(employee.userId));
+
+            const attendanceDetails = userAttendanceRecords.map(attendance => ({
+                employeeId: employee.employeeId,
+                employeeName: employee.employeeName,
+                checkInTime: attendance.checkInTime,
+                checkOutTime: attendance.checkOutTime,
+                totalWorkedHours: calculateTotalWorkedHours(attendance.checkInTime, attendance.checkOutTime)
+            }));
+
+            return attendanceDetails;
+        }).flat();
+
+        const startIndex = (page - 1) * limit;
+        const endIndex = page * limit;
+        const paginatedAttendanceDetails = attendanceWithEmployeeInfo.slice(startIndex, endIndex);
+
+        return res.status(200).json({
+            success: true,
+            currentPage: page,
+            totalItems: employees.length,
+            totalPages: Math.ceil(employees.length / limit),
+            attendanceDetails: paginatedAttendanceDetails,
+        });
     } catch (error) {
         next(error);
     }

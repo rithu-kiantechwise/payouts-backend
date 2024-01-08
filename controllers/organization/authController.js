@@ -25,6 +25,13 @@ export const organizationLogin = async (req, res, next) => {
                 error: 'Authentication failed'
             });
         }
+        if (organization.isBlocked) {
+            return res.status(401).json({
+                success: false,
+                message: 'Restricted by admin please contact for more information.',
+                error: 'Authentication failed'
+            });
+        }
 
         const { accessToken, refreshToken } = generateTokens(organization);
         await organizationModel.updateOne({ _id: organization._id }, { $set: { token: refreshToken } });
@@ -41,47 +48,9 @@ export const organizationLogin = async (req, res, next) => {
     }
 };
 
-export const premiumRegister = async (req, res, next) => {
-    const { name, address, location, email, phoneNumber, password } = req.body;
-    try {
-        const user = await organizationModel.findOne({ email });
-        if (user) {
-            return res.status(401).json({ success: false, message: 'User Existed Please Login' });
-        }
-
-        const otp = Math.floor(100000 + Math.random() * 900000);
-        const hashedPassword = await bcrypt.hash(password, 10);
-        const newUser = new organizationModel({
-            name,
-            address,
-            location,
-            email,
-            phoneNumber,
-            password: hashedPassword,
-        });
-
-        const subject = 'OTP for email verification';
-        const text = `Your OTP for email verification is: ${otp}`;
-        const result = await sendMail(
-            `${name} <${email}>`,
-            subject,
-            text,
-        );
-        if (result.success) {
-            await newUser.save();
-            return res.status(200).json({ success: true, otp, newUser, message: 'OTP sent successfully' });
-        } else {
-            return res.status(400).json({ success: false, message: 'Failed to send OTP' });
-        }
-    } catch (error) {
-        next(error);
-    }
-};
-
 export const freeTrialRegister = async (req, res, next) => {
     const { name, address, location, email, phoneNumber, password } = req.body;
     try {
-        console.log(password,'password');
         const user = await organizationModel.findOne({ email });
         if (user) {
             return res.status(401).json({ success: false, message: 'User Existed Please Login' });
@@ -135,6 +104,44 @@ export const newOrganizationOTP = async (req, res, next) => {
     }
 };
 
+export const premiumRegister = async (req, res, next) => {
+    const { name, address, location, email, phoneNumber, password, allowedEmployees } = req.body;
+    try {
+        const user = await organizationModel.findOne({ email });
+        if (user) {
+            return res.status(401).json({ success: false, message: 'User Existed Please Login' });
+        }
+
+        const otp = Math.floor(100000 + Math.random() * 900000);
+        const hashedPassword = await bcrypt.hash(password, 10);
+        const newUser = new organizationModel({
+            name,
+            email,
+            address,
+            location,
+            phoneNumber,
+            allowedEmployees,
+            password: hashedPassword,
+        });
+
+        const subject = 'OTP for email verification';
+        const text = `Your OTP for email verification is: ${otp}`;
+        const result = await sendMail(
+            `${name} <${email}>`,
+            subject,
+            text,
+        );
+        if (result.success) {
+            await newUser.save();
+            return res.status(200).json({ success: true, otp, newUser, message: 'OTP sent successfully' });
+        } else {
+            return res.status(400).json({ success: false, message: 'Failed to send OTP' });
+        }
+    } catch (error) {
+        next(error);
+    }
+};
+
 export const handleSuccessfulPayment = async (req, res, next) => {
     const { organizationId } = req.body;
 
@@ -160,9 +167,41 @@ export const handleSuccessfulPayment = async (req, res, next) => {
     }
 };
 
-export const premiumPayment = async (req, res, next) => {
+export const handlecancelledPayment = async (req, res, next) => {
+    const { organizationId } = req.body;
+
     try {
-        const session = await createSubscriptionProduct();
+        const result = await organizationModel.deleteOne({ _id: organizationId });
+
+        if (result.deletedCount === 1) {
+            return res.status(200).json({ success: true, message: 'Payment cancelled, please re-register' });
+        } else {
+            return res.status(404).json({ success: false, message: 'Organization not found' });
+        }
+    } catch (error) {
+        next(error);
+    }
+};
+
+export const premiumPayment = async (req, res, next) => {
+    const { email, allowedEmployees, plan } = req.body;
+
+    try {
+        const pricePerEmployee = 50;
+        const planDuration = parseInt(plan, 10);
+        const totalPrice = pricePerEmployee * allowedEmployees * planDuration
+        
+        const subscriptionStartDate = new Date();
+        const subscriptionEndDate = new Date(subscriptionStartDate);
+        subscriptionEndDate.setMonth(subscriptionEndDate.getMonth() + planDuration);
+        
+        const user = await organizationModel.findOne({ email });
+        user.allowedEmployees = allowedEmployees;
+        user.premium.subscriptionStartDate = subscriptionStartDate
+        user.premium.subscriptionEndDate = subscriptionEndDate
+        await user.save();
+
+        const session = await createSubscriptionProduct({ totalPrice });
 
         return res.status(200).json({ success: true, session });
     } catch (error) {
@@ -216,4 +255,3 @@ export const premiumPayment = async (req, res, next) => {
 //         next(error);
 //     }
 // };
-

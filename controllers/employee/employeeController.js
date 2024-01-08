@@ -19,9 +19,9 @@ export const editEmpProfile = async (req, res,next) => {
     const { firstName, lastName, email, position, phoneNumber, dob } = req.body
     try {
         const existingEmployeeDetails = await employeeModel.findById(employeeId);
-        if (existingEmployeeDetails.imageUrl) {
-            await deleteImage({ imageUrl: existingEmployeeDetails.imageUrl });
-        }
+        // if (existingEmployeeDetails.imageUrl) {
+        //     await deleteImage({ imageUrl: existingEmployeeDetails.imageUrl });
+        // }
 
         let imageUrl = null;
         if (imageName) {
@@ -47,7 +47,7 @@ export const editEmpProfile = async (req, res,next) => {
         );
         const employeeDetail = await getSingleImage(employeeDetails);
 
-        return res.status(200).json({success: false, employeeDetail, message: 'Profile has successfully edited' });
+        return res.status(200).json({success: true, employeeDetail, message: 'Profile has successfully edited' });
     } catch (error) {
         next(error);
     }

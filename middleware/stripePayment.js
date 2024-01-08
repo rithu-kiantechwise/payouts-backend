@@ -3,7 +3,8 @@ import stripe from 'stripe';
 const stripeAPIKey = process.env.STRIPE_SECRET_KEY;
 const stripeClient = stripe(stripeAPIKey);
 
-export const createSubscriptionProduct = async () => {
+export const createSubscriptionProduct = async (data) => {
+  console.log(data.totalPrice,'data.totollll');
   try {
     const session = await stripeClient.checkout.sessions.create({
       payment_method_types: ['card'],
@@ -12,16 +13,16 @@ export const createSubscriptionProduct = async () => {
           price_data: {
             currency: 'inr',
             product_data: {
-              name: 'Premium Feature',
+              name: 'Payouts premium',
             },
-            unit_amount: 5000,
+            unit_amount: data.totalPrice * 100,
           },
           quantity: 1,
         },
       ],
       mode: 'payment',
-      success_url: 'http://localhost:3000/organization/register?success=true',
-      cancel_url: 'http://localhost:3000/organization/register?canceled=true',
+      success_url: `https://www.payouts.online/organization/register?success=true`,
+      cancel_url: `https://www.payouts.online/organization/register?canceled=true`,
     });
 
     return { id: session.id };
