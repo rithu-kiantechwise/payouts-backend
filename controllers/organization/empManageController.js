@@ -5,6 +5,7 @@ import { employeeModel } from '../../models/employeeModel.js';
 import { leaveModel } from '../../models/leaveModel.js';
 import { attendanceModel } from '../../models/attendanceModel.js';
 import { reimbursementModel } from '../../models/reimbursementModel.js';
+import { getSingleImage } from '../../middleware/imageUploadS3.js';
 
 export const getAllEmployees = async (req, res, next) => {
     const organizationID = req.user.id;
@@ -39,9 +40,11 @@ export const getAllEmployees = async (req, res, next) => {
 };
 
 export const getEmployeeById = async (req, res, next) => {
-    const { employeeID } = req.params;
+    const { employeeID } = req.query;
     try {
-        const employee = await employeeModel.findById(employeeID);
+        const employeeDetails = await employeeModel.findById(employeeID);
+
+        const employee = await getSingleImage(employeeDetails)
         if (!employee) {
             return res.status(404).json({ success: false, error: "Employee not found" });
         }
@@ -214,12 +217,14 @@ export const getEmployeeAttendance = async (req, res, next) => {
 
         const userIds = employees.map(employee => employee._id);
 
-        const allAttendanceRecords = await attendanceModel.find({ userId: { $in: userIds } });
+        const allAttendanceRecords = await attendanceModel.find({ userId: { $in: userIds } })
+            .sort({ createdAt: -1 }); // Sort by createdAt field in descending order
 
         const attendanceWithEmployeeInfo = employeeInfo.map(employee => {
             const userAttendanceRecords = allAttendanceRecords.filter(record => record.userId.equals(employee.userId));
 
             const attendanceDetails = userAttendanceRecords.map(attendance => ({
+                date: attendance.createdAt, // Use createdAt instead of date if createdAt is the creation timestamp
                 employeeId: employee.employeeId,
                 employeeName: employee.employeeName,
                 checkInTime: attendance.checkInTime,
@@ -230,6 +235,7 @@ export const getEmployeeAttendance = async (req, res, next) => {
             return attendanceDetails;
         }).flat();
 
+        // Paginate based on sorted attendance records
         const startIndex = (page - 1) * limit;
         const endIndex = page * limit;
         const paginatedAttendanceDetails = attendanceWithEmployeeInfo.slice(startIndex, endIndex);
@@ -237,8 +243,8 @@ export const getEmployeeAttendance = async (req, res, next) => {
         return res.status(200).json({
             success: true,
             currentPage: page,
-            totalItems: employees.length,
-            totalPages: Math.ceil(employees.length / limit),
+            totalItems: attendanceWithEmployeeInfo.length,
+            totalPages: Math.ceil(attendanceWithEmployeeInfo.length / limit),
             attendanceDetails: paginatedAttendanceDetails,
         });
     } catch (error) {

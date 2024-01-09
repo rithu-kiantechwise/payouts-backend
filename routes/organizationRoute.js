@@ -20,7 +20,7 @@ router.post('/send-otp', newOrganizationOTP);
 router.get('/fetch-organization', authenticateToken, fetchOrganizationbyId)
 router.get('/all-employees', authenticateToken, getAllEmployees);
 router.get('/get-attendance', authenticateToken, getEmployeeAttendance);
-router.get('/employee-details/:employeeID', authenticateToken, getEmployeeById);
+router.get('/employee-details', authenticateToken, getEmployeeById);
 router.get('/get-reimbursement', authenticateToken, getAllReimbursements)
 router.put('/update-reimbursement', authenticateToken, updateReimbursementStatus)
 router.get('/get-leaves', authenticateToken, getAllEmployeesLeaveDetails)
