@@ -5,14 +5,14 @@ export const generateTokens = (user) => {
     id: user._id,
   },
     process.env.SECRET_KEY,
-    { expiresIn: '1d', }
+    { expiresIn: '1m', }
   );
 
   const refreshToken = jwt.sign({
     id: user._id,
   },
     process.env.SECRET_KEY,
-    { expiresIn: '7d', }
+    { expiresIn: '2m', }
   );
 
   return { accessToken, refreshToken };

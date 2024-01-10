@@ -17,8 +17,8 @@ app.use(cookieParser());
 app.use(express.json());
 app.use(
   cors({
-    // origin: ["https://payouts.online","https://www.payouts.online"],
-    origin: ["http://localhost:3000"],
+    origin: ["https://payouts.online","https://www.payouts.online"],
+    // origin: ["http://localhost:3000"],
     methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
     credentials: true,
     exposedHeaders: ["Content-Length", "X-Foo", "X-Bar"],

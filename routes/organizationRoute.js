@@ -2,7 +2,7 @@ import { Router } from "express";
 import { authenticateToken } from "../jwt/authenticateToken.js";
 import { upload } from "../middleware/imageUploadS3.js";
 import { freeTrialRegister, handleSuccessfulPayment, handlecancelledPayment, newOrganizationOTP, organizationLogin, premiumPayment, premiumRegister } from "../controllers/organization/authController.js";
-import { editOrgProfile, fetchOrganizationbyId, orgForgotPassword, orgResetPassword } from "../controllers/organization/organizationController.js";
+import { editOrgProfile, fetchOrganizationbyId, newRefreshToken, orgForgotPassword, orgResetPassword } from "../controllers/organization/organizationController.js";
 import { createEmployee, deleteEmployee, getAllEmployees, getAllEmployeesLeaveDetails, getEmployeeAttendance, getEmployeeById, manageLeaveStatus, updateEmployee } from "../controllers/organization/empManageController.js";
 import { getAllReimbursements, updateAllEmployeesTaxes, updateReimbursementStatus, updateSelectedEmployeesTaxes } from "../controllers/organization/salaryController.js";
 
@@ -36,5 +36,7 @@ router.post('/checkout-payment', premiumPayment);
 router.put('/update-employee/:id', authenticateToken, updateEmployee);
 
 router.delete('/delete-employee/:employeeID', authenticateToken, deleteEmployee);
+
+router.post('/refresh-token',newRefreshToken);
 
 export default router;

@@ -26,6 +26,7 @@ router.post('/create-reimbursement', authenticateToken, upload.single('image'), 
 router.post('/new-leave', authenticateToken, newLeave);
 router.get('/get-leave', authenticateToken, getLeaveDetails);
 router.get('/attendance-details', authenticateToken, getAttendanceDetails);
+
 router.post('/refresh-token',newRefreshToken);
 
 export default router;
