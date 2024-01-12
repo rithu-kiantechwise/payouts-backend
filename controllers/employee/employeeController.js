@@ -7,7 +7,7 @@ export const fetchEmployeebyId = async (req, res, next) => {
     try {
         const employeeDetails = await employeeModel.findById(employeeId);
         const employeeDetail = await getSingleImage(employeeDetails)
-        return res.status(200).json({ success: true, employeeDetail });
+        return res.status(200).json(employeeDetail);
     } catch (error) {
         next(error);
     }
@@ -16,7 +16,6 @@ export const fetchEmployeebyId = async (req, res, next) => {
 export const editEmpProfile = async (req, res, next) => {
     const employeeId = req.user.id;
     const imageName = req.file;
-    console.log(req.body, 'req.body');
     const {
         firstName,
         lastName,
@@ -87,20 +86,23 @@ export const newRefreshToken = async (req, res, next) => {
         return res.status(403).json({ success: false, message: 'Unauthorized: Missing token' });
     }
 
-    jwt.verify(token, process.env.SECRET_KEY, (err, user) => {
-        if (err) {
-            if (err.name === 'TokenExpiredError') {
-                return res.status(406).json({ success: false, message: 'Forbidden: Refresh token has expired' });
+    try {
+        jwt.verify(token, process.env.SECRET_KEY, (err, user) => {
+            if (err) {
+                if (err.name === 'TokenExpiredError') {
+                    return res.status(406).json({ success: false, message: 'Forbidden: Refresh token has expired' });
+                }
+                return res.status(403).json({ success: false, message: 'Forbidden: Invalid refresh token' });
             }
-            return res.status(403).json({ success: false, message: 'Forbidden: Invalid refresh token' });
-        }
-
-        const newAccessToken = jwt.sign({
-            id: user.id,
-        },
-            process.env.SECRET_KEY,
-            { expiresIn: '1m', }
-        );
-        return res.status(200).json({ success: true, newAccessToken })
-    });
+            const newAccessToken = jwt.sign({
+                id: user.id,
+            },
+                process.env.SECRET_KEY,
+                { expiresIn: '7d', }
+            );
+            return res.status(200).json({ success: true, newAccessToken })
+        });
+    } catch (error) {
+        next(error);
+    }
 };

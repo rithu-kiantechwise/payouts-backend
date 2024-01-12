@@ -10,8 +10,16 @@ const leaveSchema = new mongoose.Schema({
         type: Date,
         required: true,
     },
+    startTime: {
+        type: String,
+        required: true,
+    },
     endDate: {
         type: Date,
+        required: true,
+    },
+    endTime: {
+        type: String,
         required: true,
     },
     reason: {

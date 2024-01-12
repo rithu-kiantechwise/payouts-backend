@@ -68,6 +68,7 @@ export const handleCheckout = async (req, res, next) => {
         next(error);
     }
 };
+
 export const getAttendanceDetails = async (req, res, next) => {
     const employeeID = req.user.id;
     const { page } = req.query;

@@ -4,6 +4,22 @@ import { generateTokens } from '../../jwt/generateToken.js';
 import { getSingleImage } from '../../middleware/imageUploadS3.js';
 import { sendMail } from '../../middleware/nodemailer.js';
 
+export const getAdminDetails = async (req, res, next) => {
+    const adminId = req.user.id;
+    try {
+        const adminDetails = await adminModel.findById(adminId);
+        const adminDetail = await getSingleImage(adminDetails);
+
+        if (!adminDetail) {
+            return res.status(404).json({ success: false, error: 'Organization not found', message: 'Organization not found' });
+        }
+
+        return res.status(200).json(adminDetail);
+    } catch (error) {
+        next(error);
+    }
+};
+
 export const adminLogin = async (req, res, next) => {
     const { email, password } = req.body;
     try {
@@ -49,22 +65,6 @@ export const registerAdmin = async (req, res, next) => {
         await newUser.save();
 
         return res.status(200).json({ success: true, message: 'User registered successfully' });
-    } catch (error) {
-        next(error);
-    }
-};
-
-export const getAdminDetails = async (req, res, next) => {
-    const adminId = req.user.id;
-    try {
-        const adminDetails = await adminModel.findById(adminId);
-        const adminDetail = await getSingleImage(adminDetails);
-
-        if (!adminDetail) {
-            return res.status(404).json({ success: false, error: 'Organization not found', message: 'Organization not found' });
-        }
-
-        return res.status(200).json({ adminDetail });
     } catch (error) {
         next(error);
     }
