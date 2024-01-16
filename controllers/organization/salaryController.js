@@ -1,4 +1,5 @@
 import { getGroupOfImage } from "../../middleware/imageUploadS3.js";
+import { attendanceModel } from "../../models/attendanceModel.js";
 import { employeeModel } from "../../models/employeeModel.js";
 import { organizationModel } from "../../models/organizationModel.js";
 import { reimbursementModel } from "../../models/reimbursementModel.js";
@@ -106,6 +107,94 @@ export const updateAllEmployeesTaxes = async (req, res, next) => {
             updateQuery
         );
         res.status(200).json({ success: true, updatedEmployees, message: 'Employee tax updated' });
+    } catch (error) {
+        next(error);
+    }
+};
+
+const calculateReimbursementTotal = (reimbursements) => {
+    return reimbursements
+        .filter((reimbursement) => reimbursement.status === 'Approved')
+        .reduce((total, reimbursement) => total + reimbursement.amount, 0);
+};
+const getUniqueMonthsForEmployee = async (employeeId) => {
+    const uniqueMonths = await attendanceModel.aggregate([
+        { $match: { userId: employeeId } },
+        {
+            $group: {
+                _id: { $dateToString: { format: "%Y-%m", date: "$checkInTime" } },
+            },
+        },
+    ]);
+    return uniqueMonths.map((entry) => entry._id);
+};
+export const employeeMonthlySalary = async (req, res, next) => {
+    const organizationId = req.user.id;
+    const { page } = req.query;
+
+    try {
+        const organization = await organizationModel.findById(organizationId).populate('employees');
+        if (!organization) {
+            return res.status(404).json({ error: 'Organization not found' });
+        }
+        console.log(organization, 'organization');
+        const employeeIds = organization.employees.map(employee => employee._id);
+        const uniqueMonths = await getUniqueMonthsForEmployee(employeeIds);
+        console.log(uniqueMonths, 'uniqueMonths');
+        const limit = 10;
+        const startIndex = (page - 1) * limit;
+        const endIndex = page * limit;
+        const paginatedMonths = uniqueMonths.slice(startIndex, endIndex);
+
+        const salaryDetailsByMonth = [];
+
+        for (const month of paginatedMonths) {
+            const startOfMonth = new Date(`${month}-01T00:00:00.000Z`);
+            const endOfMonth = new Date(new Date(startOfMonth).setMonth(startOfMonth.getMonth() + 1));
+
+            const reimbursements = await reimbursementModel.find({
+                employeeId: { $in: employeeIds },
+                createdAt: { $gte: startOfMonth, $lt: endOfMonth },
+            });
+
+            const actualSalary = parseFloat(employee.salary);
+            const totalReimbursement = calculateReimbursementTotal(reimbursements);
+
+            const taxAmount = (employee.tax / 100) * actualSalary;
+            const roundedTax = parseFloat(taxAmount.toFixed());
+            const netSalaryBeforeDeductions = actualSalary - roundedTax;
+
+            const esiAmount = (employee.esi / 100) * netSalaryBeforeDeductions;
+            const roundedEsi = parseFloat(esiAmount.toFixed());
+
+            const pfAmount = (employee.pf / 100) * netSalaryBeforeDeductions;
+            const roundedPf = parseFloat(pfAmount.toFixed());
+
+            const bonusAmount = employee.bonus;
+            const roundedBonus = parseFloat(bonusAmount.toFixed());
+
+            const netSalary = netSalaryBeforeDeductions - roundedEsi - roundedPf + roundedBonus + totalReimbursement;
+            const roundedNetSalary = parseFloat(netSalary.toFixed());
+
+            salaryDetailsByMonth.push({
+                month,
+                reimbursements,
+                actualSalary,
+                roundedTax,
+                roundedEsi,
+                roundedPf,
+                roundedBonus,
+                roundedNetSalary,
+            });
+        }
+
+        return res.status(200).json({
+            success: true,
+            currentPage: page,
+            totalItems: uniqueMonths.length,
+            totalPages: Math.ceil(uniqueMonths.length / limit),
+            salaryDetails: salaryDetailsByMonth,
+        });
     } catch (error) {
         next(error);
     }

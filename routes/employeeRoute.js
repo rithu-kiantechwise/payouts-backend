@@ -5,7 +5,7 @@ import { empResetPassword, empforgotPassword, employeeLogin, employeeLogout } fr
 import { editEmpProfile, fetchEmployeebyId, newRefreshToken } from "../controllers/employee/employeeController.js";
 import { getAttendanceDetails, handleCheckin, handleCheckout, verifyCheckinOTP } from "../controllers/employee/attendanceController.js";
 import { getMonthlySalaryDetails, newReimbursement } from "../controllers/employee/salaryController.js";
-import { fetchLeaveDetails, getLeaveDetails, getUpcomingLeaves, newLeave, updateLeave } from "../controllers/employee/leaveController.js";
+import { cancelLeave, fetchLeaveDetails, getLeaveDetails, getUpcomingLeaves, newLeave, updateLeave } from "../controllers/employee/leaveController.js";
 
 
 const router = Router();
@@ -26,6 +26,7 @@ router.post('/create-reimbursement', authenticateToken, upload.single('image'), 
 router.post('/new-leave', authenticateToken, newLeave);
 router.get('/get-leave', authenticateToken, getLeaveDetails);
 router.post('/edit-leave', authenticateToken, updateLeave);
+router.post('/cancel-leave', authenticateToken, cancelLeave);
 router.get('/upcoming-leave', authenticateToken, getUpcomingLeaves);
 router.get('/leave-details', authenticateToken, fetchLeaveDetails);
 router.get('/attendance-details', authenticateToken, getAttendanceDetails);

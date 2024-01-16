@@ -120,3 +120,29 @@ export const updateLeave = async (req, res, next) => {
         next(error);
     }
 };
+
+export const cancelLeave = async (req, res, next) => {
+    const { leaveId } = req.body;
+
+    try {
+        const leave = await leaveModel.findById(leaveId);
+
+        if (!leave) {
+            return res.status(404).json({ success: false, message: 'Leave not found' });
+        }
+
+        if (leave.status === 'Cancelled') {
+            return res.status(400).json({ success: false, message: 'Leave is already cancelled' });
+        }
+
+        const updatedLeave = await leaveModel.findByIdAndUpdate(
+            leaveId,
+            { $set: { status: 'Cancelled' } },
+            { new: true }
+        );
+
+        return res.status(200).json({ success: true, updatedLeave, message: 'Leave updated successfully' });
+    } catch (error) {
+        next(error);
+    }
+};

@@ -4,7 +4,7 @@ import { upload } from "../middleware/imageUploadS3.js";
 import { freeTrialRegister, handleSuccessfulPayment, handlecancelledPayment, newOrganizationOTP, organizationLogin, premiumPayment, premiumRegister } from "../controllers/organization/authController.js";
 import { editOrgProfile, fetchOrganizationbyId, newRefreshToken, orgForgotPassword, orgResetPassword } from "../controllers/organization/organizationController.js";
 import { createEmployee, deleteEmployee, getAllEmployees, getAllEmployeesLeaveDetails, getEmployeeAttendance, getEmployeeById, manageLeaveStatus, updateEmployee } from "../controllers/organization/empManageController.js";
-import { getAllReimbursements, updateAllEmployeesTaxes, updateReimbursementStatus, updateSelectedEmployeesTaxes } from "../controllers/organization/salaryController.js";
+import { employeeMonthlySalary, getAllReimbursements, updateAllEmployeesTaxes, updateReimbursementStatus, updateSelectedEmployeesTaxes } from "../controllers/organization/salaryController.js";
 
 const router = Router();
 
@@ -20,6 +20,7 @@ router.post('/send-otp', newOrganizationOTP);
 router.get('/fetch-organization', authenticateToken, fetchOrganizationbyId)
 router.get('/all-employees', authenticateToken, getAllEmployees);
 router.get('/get-attendance', authenticateToken, getEmployeeAttendance);
+router.get('/get-salary', authenticateToken, employeeMonthlySalary);
 router.get('/employee-details', authenticateToken, getEmployeeById);
 router.get('/get-reimbursement', authenticateToken, getAllReimbursements)
 router.put('/update-reimbursement', authenticateToken, updateReimbursementStatus)
