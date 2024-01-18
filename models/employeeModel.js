@@ -67,27 +67,21 @@ const employeeSchema = new mongoose.Schema({
     bankAccount: {
         accountHolderName: {
             type: String,
-            required: true,
         },
         accountNumber: {
             type: String,
-            required: true,
         },
         bankName: {
             type: String,
-            required: true,
         },
         branch: {
             type: String,
-            required: true,
         },
         IFSCcode: {
             type: String,
-            required: true,
         },
         upiId: {
             type: String,
-            required: true,
         }
     },
 },

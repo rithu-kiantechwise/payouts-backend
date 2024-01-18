@@ -53,7 +53,7 @@ export const getMonthlySalaryDetails = async (req, res, next) => {
         const employee = await employeeModel.findById(employeeID);
         const uniqueMonths = await getUniqueMonthsForEmployee(employee._id);
 
-        const limit = 10; // Adjust the default limit as needed
+        const limit = 10;
         const startIndex = (page - 1) * limit;
         const endIndex = page * limit;
         const paginatedMonths = uniqueMonths.slice(startIndex, endIndex);
