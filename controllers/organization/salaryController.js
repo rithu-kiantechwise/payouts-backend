@@ -1,5 +1,6 @@
 import { getGroupOfImage } from "../../middleware/imageUploadS3.js";
 import { employeeModel } from "../../models/employeeModel.js";
+import { notificationModel } from "../../models/notificationmodel.js";
 import { organizationModel } from "../../models/organizationModel.js";
 import { reimbursementModel } from "../../models/reimbursementModel.js";
 
@@ -51,6 +52,17 @@ export const updateReimbursementStatus = async (req, res, next) => {
         );
         if (!reimbursement) {
             return res.status(404).json({ success: false, error: 'Reimbursement not found' });
+        }
+        if (newStatus === 'Approved') {
+            const notificationData = {
+                title: 'Reimbursement Approved',
+                content: `Your Reimbursement request has been approved.`,
+                employeeId: reimbursement.employeeId,
+                status: false,
+            };
+
+            const newNotification = new notificationModel(notificationData);
+            await newNotification.save();
         }
 
         return res.status(200).json({ success: true, reimbursement });

@@ -1,4 +1,6 @@
+import { employeeModel } from "../../models/employeeModel.js";
 import { leaveModel } from "../../models/leaveModel.js";
+import { notificationModel } from "../../models/notificationmodel.js";
 
 export const newLeave = async (req, res, next) => {
     const employeeId = req.user.id;
@@ -23,6 +25,18 @@ export const newLeave = async (req, res, next) => {
         }
         const leave = new leaveModel(leaveData);
         await leave.save();
+        const employeeDetails = employeeModel.findById(employeeId);
+        const organizationId = employeeDetails.organization;
+        const notificationData = {
+            title: 'New Leave Request',
+            content: `${employeeDetails.firstName} ${employeeDetails.lastName} has submitted a new leave request.`,
+            organizationId: organizationId,
+            status: false,
+        };
+
+        const newNotification = new notificationModel(notificationData);
+        await newNotification.save();
+
         return res.status(201).json({ success: true, leave, message: "Leave request created successfully" });
     } catch (error) {
         next(error);
@@ -89,6 +103,7 @@ export const fetchLeaveDetails = async (req, res, next) => {
 };
 
 export const updateLeave = async (req, res, next) => {
+    const employeeId = req.user.id;
     const { _id, startDate, endDate, startTime, endTime, reason } = req.body;
 
     try {
@@ -104,14 +119,27 @@ export const updateLeave = async (req, res, next) => {
 
         const leave = await leaveModel.findById(_id);
         if (leave) {
+            const employeeDetails = employeeModel.findById(employeeId);
+
             leave.startDate = startDate;
             leave.startTime = startTime;
             leave.endDate = endDate;
             leave.endTime = endTime;
             leave.reason = reason;
             leave.status = 'Pending';
-
             await leave.save();
+
+            const organizationId = employeeDetails.organization;
+            const notificationData = {
+                title: 'Leave Update',
+                content: `${employeeDetails.firstName} ${employeeDetails.lastName} has updated a leave request.`,
+                organizationId: organizationId,
+                status: false,
+            };
+
+            const newNotification = new notificationModel(notificationData);
+            await newNotification.save();
+
             return res.status(200).json({ success: true, message: 'Leave updated successfully' });
         } else {
             return res.status(404).json({ success: false, message: 'Leave not found' });
@@ -122,15 +150,14 @@ export const updateLeave = async (req, res, next) => {
 };
 
 export const cancelLeave = async (req, res, next) => {
+    const employeeId = req.user.id;
     const { leaveId } = req.body;
 
     try {
         const leave = await leaveModel.findById(leaveId);
-
         if (!leave) {
             return res.status(404).json({ success: false, message: 'Leave not found' });
         }
-
         if (leave.status === 'Cancelled') {
             return res.status(400).json({ success: false, message: 'Leave is already cancelled' });
         }
@@ -140,6 +167,17 @@ export const cancelLeave = async (req, res, next) => {
             { $set: { status: 'Cancelled' } },
             { new: true }
         );
+        const employeeDetails = employeeModel.findById(employeeId);
+
+        const organizationId = employeeDetails.organization;
+        const notificationData = {
+            title: 'Leave Cancelled',
+            content: `${employeeDetails.firstName} ${employeeDetails.lastName} has cancelled a leave request.`,
+            organizationId: organizationId,
+            status: false,
+        };
+        const newNotification = new notificationModel(notificationData);
+        await newNotification.save();
 
         return res.status(200).json({ success: true, updatedLeave, message: 'Leave updated successfully' });
     } catch (error) {

@@ -6,6 +6,7 @@ import { leaveModel } from '../../models/leaveModel.js';
 import { attendanceModel } from '../../models/attendanceModel.js';
 import { reimbursementModel } from '../../models/reimbursementModel.js';
 import { getSingleImage } from '../../middleware/imageUploadS3.js';
+import { notificationModel } from '../../models/notificationmodel.js';
 
 export const getAllEmployees = async (req, res, next) => {
     const organizationID = req.user.id;
@@ -175,14 +176,25 @@ export const getAllEmployeesLeaveDetails = async (req, res, next) => {
 };
 
 export const manageLeaveStatus = async (req, res, next) => {
+    const { leaveId, newStatus } = req.body;
+    
     try {
-        const { leaveId, newStatus } = req.body;
-
         const updatedLeave = await leaveModel.findByIdAndUpdate(
             leaveId,
             { status: newStatus },
             { new: true }
         );
+        if (newStatus === 'Approved') {
+            const notificationData = {
+                title: 'Leave Approved',
+                content: `Your leave request has been approved.`,
+                employeeId: updatedLeave.employeeId,
+                status: false,
+            };
+
+            const newNotification = new notificationModel(notificationData);
+            await newNotification.save();
+        }
 
         return res.status(200).json({ success: true, updatedLeave });
     } catch (error) {

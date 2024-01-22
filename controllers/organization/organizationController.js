@@ -3,17 +3,16 @@ import jwt from 'jsonwebtoken';
 import { organizationModel } from '../../models/organizationModel.js';
 import { sendMail } from '../../middleware/nodemailer.js';
 import { deleteImage, getSingleImage, imageUpload } from '../../middleware/imageUploadS3.js';
+import { notificationModel } from '../../models/notificationmodel.js';
 
 export const fetchOrganizationbyId = async (req, res, next) => {
     const organizationId = req.user.id;
     try {
         const organizationDetails = await organizationModel.findById(organizationId);
-        const organizationDetail = await getSingleImage(organizationDetails);
-
-        if (!organizationDetail) {
+        if (!organizationDetails) {
             return res.status(404).json({ success: false, error: 'Organization not found', message: 'Organization not found' });
         }
-
+        const organizationDetail = await getSingleImage(organizationDetails);
         return res.status(200).json(organizationDetail);
     } catch (error) {
         next(error);
@@ -132,3 +131,72 @@ export const newRefreshToken = async (req, res, next) => {
         next(error);
     }
 };
+
+export const fetchAnyNotification = async (req, res, next) => {
+    const organizationId = req.user.id;
+    try {
+        const todayDate = new Date().toLocaleDateString('en-US', { month: '2-digit', day: '2-digit' });
+        const organizationDetails = await organizationModel.findById(organizationId).populate('employees');
+
+        const employeeBirthday = organizationDetails.employees.filter(employee => {
+            const employeeDOB = new Date(employee.dob).toLocaleDateString('en-US', { month: '2-digit', day: '2-digit' });
+            return employeeDOB === todayDate;
+        });
+
+        if (employeeBirthday.length > 0) {
+            const employeeNames = employeeBirthday.map(employee => employee.firstName);
+            const existingNotification = await notificationModel.findOne({
+                title: 'Birthday Notification',
+                organizationId,
+                createdAt: { $gte: new Date(new Date().setHours(0, 0, 0, 0)), $lt: new Date(new Date().setHours(23, 59, 59, 999)) }
+            });
+
+            if (!existingNotification) {
+                const notificationMessage = `Today is the birthday of ${employeeNames.join(', ')}.`;
+
+                await notificationModel.create({
+                    title: 'Birthday Notification',
+                    content: notificationMessage,
+                    organizationId,
+                    status: false,
+                });
+            }
+        }
+        const notifications = await notificationModel.find({ organizationId: organizationId })
+        return res.status(200).json({ success: true, notifications })
+    } catch (error) {
+        next(error);
+    }
+}
+
+
+export const deleteNotification = async (req, res, next) => {
+    const organizationId = req.user.id;
+    try {
+        const result = await notificationModel.deleteMany({ organizationId: organizationId });
+
+        if (result.ok && result.deletedCount > 0) {
+            return res.status(200).json({ success: true, deletedCount: result.deletedCount });
+        } else {
+            return res.status(404).json({ success: false, message: 'No notifications found for the specified organization.' });
+        }
+    } catch (error) {
+        next(error);
+    }
+}
+
+export const unreadNotification = async (req, res, next) => {
+    const organizationId = req.user.id;
+    try {
+        const notifications = await notificationModel.find({ organizationId: organizationId });
+
+        await notificationModel.updateMany(
+            { organizationId: organizationId },
+            { $set: { status: true } }
+        );
+
+        return res.status(200).json({ success: true, notifications });
+    } catch (error) {
+        next(error);
+    }
+}

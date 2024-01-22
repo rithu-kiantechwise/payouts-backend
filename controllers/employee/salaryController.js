@@ -2,6 +2,7 @@ import { reimbursementModel } from '../../models/reimbursementModel.js';
 import { imageUpload } from '../../middleware/imageUploadS3.js';
 import { employeeModel } from '../../models/employeeModel.js';
 import { attendanceModel } from '../../models/attendanceModel.js';
+import { notificationModel } from '../../models/notificationmodel.js';
 
 export const newReimbursement = async (req, res, next) => {
     const employeeId = req.user.id;
@@ -21,8 +22,19 @@ export const newReimbursement = async (req, res, next) => {
             updateFields.imageUrl = imageUrl;
         }
         const reimbursement = new reimbursementModel(updateFields);
-
         await reimbursement.save();
+
+        const employeeDetails = employeeModel.findById(employeeId);
+        const organizationId = employeeDetails.organization;
+        const notificationData = {
+            title: 'New Reimbursement Claim',
+            content: `${employeeDetails.firstName} ${employeeDetails.lastName} has submitted a new reimbursement claim.`,
+            organizationId: organizationId,
+            status: false,
+        };
+
+        const newNotification = new notificationModel(notificationData);
+        await newNotification.save();
         return res.status(200).json({ success: true, reimbursement, message: 'Your claim has successfully registered' });
     } catch (error) {
         next(error);

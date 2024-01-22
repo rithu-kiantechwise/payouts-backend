@@ -2,7 +2,7 @@ import { Router } from "express";
 import { authenticateToken } from "../jwt/authenticateToken.js";
 import { upload } from "../middleware/imageUploadS3.js";
 import { empResetPassword, empforgotPassword, employeeLogin, employeeLogout } from "../controllers/employee/authController.js";
-import { editEmpProfile, fetchEmployeebyId, newRefreshToken } from "../controllers/employee/employeeController.js";
+import { deleteNotification, editEmpProfile, fetchEmployeebyId, fetchNotification, newRefreshToken, unreadNotification } from "../controllers/employee/employeeController.js";
 import { getAttendanceDetails, handleCheckin, handleCheckout, verifyCheckinOTP } from "../controllers/employee/attendanceController.js";
 import { getMonthlySalaryDetails, newReimbursement } from "../controllers/employee/salaryController.js";
 import { cancelLeave, fetchLeaveDetails, getLeaveDetails, getUpcomingLeaves, newLeave, updateLeave } from "../controllers/employee/leaveController.js";
@@ -30,6 +30,9 @@ router.post('/cancel-leave', authenticateToken, cancelLeave);
 router.get('/upcoming-leave', authenticateToken, getUpcomingLeaves);
 router.get('/leave-details', authenticateToken, fetchLeaveDetails);
 router.get('/attendance-details', authenticateToken, getAttendanceDetails);
+router.get('/get-notification', authenticateToken, fetchNotification);
+router.post('/delete-notification', authenticateToken, deleteNotification);
+router.post('/unread-notification', authenticateToken, unreadNotification);
 
 router.post('/refresh-token',newRefreshToken);
 

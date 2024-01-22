@@ -1,6 +1,7 @@
 import jwt from 'jsonwebtoken';
 import { employeeModel } from "../../models/employeeModel.js";
 import { deleteImage, getSingleImage, imageUpload } from '../../middleware/imageUploadS3.js';
+import { notificationModel } from '../../models/notificationmodel.js';
 
 export const fetchEmployeebyId = async (req, res, next) => {
     const employeeId = req.user.id;
@@ -69,6 +70,17 @@ export const editEmpProfile = async (req, res, next) => {
         );
         const employeeDetail = await getSingleImage(employeeDetails);
 
+        const organizationId = employeeDetails.organization;
+        const notificationData = {
+            title: 'Profile Update',
+            content: `${employeeDetail.firstName} ${employeeDetail.lastName} has updated their profile.`,
+            organizationId: organizationId,
+            status: false,
+        };
+
+        const newNotification = new notificationModel(notificationData);
+        await newNotification.save();
+
         return res.status(200).json({ success: true, employeeDetail, message: 'Profile has successfully edited' });
     } catch (error) {
         next(error);
@@ -106,3 +118,49 @@ export const newRefreshToken = async (req, res, next) => {
         next(error);
     }
 };
+
+export const fetchNotification = async (req, res, next) => {
+    const employeeId = req.user.id;
+
+    try {
+        const notifications = await notificationModel.find({ employeeId: employeeId })
+
+        return res.status(200).json({ success: true, notifications })
+    } catch (error) {
+        next(error);
+    }
+}
+
+
+export const deleteNotification = async (req, res, next) => {
+    const employeeId = req.user.id;
+
+    try {
+        const result = await notificationModel.deleteMany({ employeeId: employeeId });
+
+        if (result.ok && result.deletedCount > 0) {
+            return res.status(200).json({ success: true, deletedCount: result.deletedCount });
+        } else {
+            return res.status(404).json({ success: false, message: 'No notifications found for the specified organization.' });
+        }
+    } catch (error) {
+        next(error);
+    }
+}
+
+export const unreadNotification = async (req, res, next) => {
+    const employeeId = req.user.id;
+
+    try {
+        const notifications = await notificationModel.find({ employeeId: employeeId });
+
+        await notificationModel.updateMany(
+            { employeeId: employeeId },
+            { $set: { status: true } }
+        );
+
+        return res.status(200).json({ success: true, notifications });
+    } catch (error) {
+        next(error);
+    }
+}
