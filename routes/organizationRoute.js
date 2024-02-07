@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { authenticateToken } from "../jwt/authenticateToken.js";
 import { upload } from "../middleware/imageUploadS3.js";
-import { freeTrialRegister, handleSuccessfulPayment, handlecancelledPayment, newOrganizationOTP, organizationLogin, premiumPayment, premiumRegister } from "../controllers/organization/authController.js";
+import { freeTrialRegister, handleSuccessfulPayment, handlecancelledPayment, newOrganizationOTP, organizationLogin, premiumPayment, premiumRegister, verifyPayment } from "../controllers/organization/authController.js";
 import { deleteNotification, editOrgProfile, fetchAnyNotification, fetchOrganizationbyId, newRefreshToken, orgForgotPassword, orgResetPassword, unreadNotification } from "../controllers/organization/organizationController.js";
 import { createEmployee, deleteEmployee, getAllEmployees, getAllEmployeesLeaveDetails, getEmployeeAttendance, getEmployeeById, manageLeaveStatus, updateEmployee } from "../controllers/organization/empManageController.js";
 import { employeeMonthlySalary, getAllReimbursements, updateAllEmployeesTaxes, updateReimbursementStatus, updateSelectedEmployeesTaxes } from "../controllers/organization/salaryController.js";
@@ -9,10 +9,12 @@ import { employeeMonthlySalary, getAllReimbursements, updateAllEmployeesTaxes, u
 const router = Router();
 
 router.post('/organization-login', organizationLogin);
+
 router.post('/organization-register', premiumRegister);
 router.post('/free-register', freeTrialRegister);
 router.post('/premium-register', handleSuccessfulPayment);
 router.post('/cancel-register', handlecancelledPayment);
+
 router.post('/forgot-password', orgForgotPassword);
 router.post('/reset-password', orgResetPassword);
 router.post('/send-otp', newOrganizationOTP);
@@ -37,6 +39,7 @@ router.post('/update-all-taxes',authenticateToken, updateAllEmployeesTaxes);
 router.post('/create-employee', authenticateToken, createEmployee);
 router.post('/edit-Profile', authenticateToken, upload.single('image'), editOrgProfile);
 router.post('/checkout-payment', premiumPayment);
+router.post('/verify-payment', verifyPayment);
 
 router.put('/update-employee/:id', authenticateToken, updateEmployee);
 

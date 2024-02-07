@@ -1,9 +1,16 @@
 import bcrypt from 'bcrypt';
+import crypto from 'crypto';
+import Razorpay from 'razorpay';
 import { organizationModel } from '../../models/organizationModel.js';
 import { generateTokens } from '../../jwt/generateToken.js';
 import { getSingleImage } from '../../middleware/imageUploadS3.js';
 import { sendMail } from '../../middleware/nodemailer.js';
-import { createSubscriptionProduct } from '../../middleware/stripePayment.js';
+import { paymentModel } from '../../models/paymentModel.js';
+
+const razorpay = new Razorpay({
+    key_id: 'rzp_test_qzknbOvHpQZ67N',
+    key_secret: 'cxV55hXZNWmHAyQ6FGTkCyFs',
+});
 
 export const organizationLogin = async (req, res, next) => {
     const { email, password } = req.body;
@@ -190,49 +197,61 @@ export const premiumPayment = async (req, res, next) => {
         const pricePerEmployee = 50;
         const planDuration = parseInt(plan, 10);
         const totalPrice = pricePerEmployee * allowedEmployees * planDuration
-        
+
         const subscriptionStartDate = new Date();
         const subscriptionEndDate = new Date(subscriptionStartDate);
         subscriptionEndDate.setMonth(subscriptionEndDate.getMonth() + planDuration);
-        
+
         const user = await organizationModel.findOne({ email });
         user.allowedEmployees = allowedEmployees;
         user.premium.subscriptionStartDate = subscriptionStartDate
         user.premium.subscriptionEndDate = subscriptionEndDate
         await user.save();
 
-        const session = await createSubscriptionProduct({ totalPrice });
+        const options = {
+            amount: totalPrice * 100,
+            currency: 'INR',
+            receipt: crypto.randomBytes(10).toString('hex'),
+        };
+        const order = await razorpay.orders.create(options);
+        const userData = {
+            user,
+            totalPrice,
+            planDuration,
+            subscriptionStartDate,
+            subscriptionEndDate,
+        }
 
-        return res.status(200).json({ success: true, session });
+        return res.status(200).json({ success: true, order, userData });
     } catch (error) {
         next(error);
     }
 };
 
-// export const activatePremiumSubscription = async (req, res, next) => {
-//     const organizationId = req.user.id
-//     try {
-//         const user = await organizationModel.findById(organizationId);
-//         if (user) {
-//             return res.status(401).json({ success: false, message: 'User Existed Please Login' });
-//         }
-//         if (user.freeTrial.active) {
-//             return res.status(400).json({ success: false, error: "Cannot activate premium subscription during free trial." });
-//         }
+export const verifyPayment = async (req, res, next) => {
+    const { orderId, paymentId, signature } = req.body;
 
-//         // Activate premium subscription
-//         user.premium.isActive = true;
-//         user.premium.subscriptionStartDate = new Date();
-//         user.premium.subscriptionEndDate = new Date();
-//         user.premium.subscriptionEndDate.setMonth(user.premium.subscriptionEndDate.getMonth() + 1);
-//         await user.save();
+    try {
+        const order = await razorpay.orders.fetch(orderId);
+        const generatedSignature = Razorpay.validateWebhookSignature(JSON.stringify(order), signature, '12345678');
+        
+        if (generatedSignature) {
+            const payment = new paymentModel({
+                orderId,
+                paymentId,
+                signature,
+                amount: order.amount / 100,
+            });
 
-//         return res.status(200).json({ success: true, message: 'Organization registered successfully' });
-//     } catch (error) {
-//         next(error);
-//     }
-// };
-
+            await payment.save();
+            res.json({ success: true, message: 'Payment successful' });
+        } else {
+            res.status(400).json({ success: false, message: 'Invalid signature' });
+        }
+    } catch (error) {
+        next(error);
+    }
+};
 
 // export const checkPremiumAccess = async (req, res, next) => {
 //     const organizationId = req.user.id;
