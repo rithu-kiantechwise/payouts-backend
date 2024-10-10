@@ -197,6 +197,7 @@ export const premiumPayment = async (req, res, next) => {
         const pricePerEmployee = 50;
         const planDuration = parseInt(plan, 10);
         const totalPrice = pricePerEmployee * allowedEmployees * planDuration
+        const inclusiveGST = totalPrice + (totalPrice * 0.18);
 
         const subscriptionStartDate = new Date();
         const subscriptionEndDate = new Date(subscriptionStartDate);
@@ -209,7 +210,7 @@ export const premiumPayment = async (req, res, next) => {
         await user.save();
 
         const options = {
-            amount: totalPrice * 100,
+            amount: inclusiveGST * 100,
             currency: 'INR',
             receipt: crypto.randomBytes(10).toString('hex'),
         };
@@ -217,10 +218,13 @@ export const premiumPayment = async (req, res, next) => {
         const userData = {
             user,
             totalPrice,
+            inclusiveGST,
             planDuration,
             subscriptionStartDate,
             subscriptionEndDate,
         }
+        console.log(order, 'order');
+        console.log(userData, 'userData');
 
         return res.status(200).json({ success: true, order, userData });
     } catch (error) {
@@ -234,7 +238,7 @@ export const verifyPayment = async (req, res, next) => {
     try {
         const order = await razorpay.orders.fetch(orderId);
         const generatedSignature = Razorpay.validateWebhookSignature(JSON.stringify(order), signature, '12345678');
-        
+
         if (generatedSignature) {
             const payment = new paymentModel({
                 orderId,
